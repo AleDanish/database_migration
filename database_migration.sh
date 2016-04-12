@@ -1,4 +1,4 @@
-!/bin/bash 
+#!/bin/bash 
 Tstart=$(date +%s%6N)
 
 if [ "$1" == "" ]; then
@@ -34,7 +34,23 @@ echo "database restart"
 Trestart_end=$(date +%s%6N)
 
 #get databases
-curl -G "http://localhost:8086/query" --data-urlencode  "q=show databases"
+databases_json=$(curl -G "http://localhost:8086/query" --data-urlencode  "q=show databases")
+echo $databases_json
+databases=$(python - << END 
+print $databases_json["results"][0]["series"][0]["values"] 
+END)
+for database in $databases; do
+set -- "$database" 
+IFS="'"; declare -a Array=($*) 
+db="${Array[1]}"
+echo db: $db
+measurements=$(curl -G "http://localhost:8086/query" --data-urlencode "db="$db --data-urlencode  "q=show measurements")
+echo $measurements
+#  query1="q=CREATE DATABASE "$database
+#  address2="http://$1:8086/write?db="$database
+#  $curl $args1 $address1 $options1 "$query1"
+done
+
 
 #get data newer of the timestamp
 #sudo curl -o newerdata_migration.json -G 'http://'$oldfloatingip':8086/query' --data-urlencode "db=" --data-urlencode "q=SELECT * FROM  WHERE time>"$timestamp
