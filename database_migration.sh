@@ -10,7 +10,7 @@ echo $oldfloatingip
 #remove old archive if present
 #sudo rm /home/ubuntu/influxdb.backup.tar.gz
 
-timestamp=$(date +%s%6N)
+timestamp=$(date +%s)
 
 #send data
 Tmove_start=$(date +%s%6N)
@@ -39,37 +39,36 @@ echo $databases_json
 databases=$(python - << END 
 print $databases_json["results"][0]["series"][0]["values"] 
 END)
-for database in $databases; do
-set -- "$database" 
+for database_row in $databases; do
+set -- "$database_row" 
 IFS="'"; declare -a Array=($*) 
-db="${Array[1]}"
-echo db: $db
-measurements=$(curl -G "http://localhost:8086/query" --data-urlencode "db="$db --data-urlencode  "q=show measurements")
+database="${Array[1]}"
+echo db: $database
+measurements=$(curl -G "http://localhost:8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements")
 echo $measurements
 tables=$(python - << END 
-print $measurements["results"][0]["series"][0]["values"] 
+print $measurements["results"][0]["series"][0]["values"]
 END)
 echo $tables
-for table in $tables; do
-set -- "$table" 
-IFS="'"; declare -a Array=($*)
-db="${Array[1]}"
-echo table: $table
+for table_raw in $tables; do
+set -- "$table_raw"
+IFS=" "; declare -a Array=($*)
+table="${Array[0]}"
+if [[ "$table" != *"["* ]] && [[ "$table" != *"]"* ]]; then
+echo $table
 #get data newer of the timestamp
-#sudo curl -o newerdata_migration.json -G 'http://'$oldfloatingip':8086/query' --data-urlencode "db=" --data-urlencode "q=SELECT * FROM  WHERE time>"$timestamp
+file_name="newerdata_migration"$db$table".json"
+sudo curl -o $file_name -G 'http://'$oldfloatingip':8086/query' --data-urlencode "db="$database --data-urlencode "q=SELECT * FROM "$table
+
+#python convertInfluxDB_JsonToTxt.py newerdata_migration.json $timestamp
+
+fi
 done
 
 #  query1="q=CREATE DATABASE "$database
 #  address2="http://$1:8086/write?db="$database
 #  $curl $args1 $address1 $options1 "$query1"
 done
-
-
-#get data newer of the timestamp
-#sudo curl -o newerdata_migration.json -G 'http://'$oldfloatingip':8086/query' --data-urlencode "db=" --data-urlencode "q=SELECT * FROM  WHERE time>"$timestamp
-
-#converti il file json in LineProtocol
-#python convertInfluxDB_JsonToTxt.py newerdata_migration.json
 
 #importa i dati
 #curl -i -XPOST 'http://localhost:8086/write?db=mydb' --data-binary @newerdata_migration.txt
