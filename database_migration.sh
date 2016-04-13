@@ -46,6 +46,19 @@ db="${Array[1]}"
 echo db: $db
 measurements=$(curl -G "http://localhost:8086/query" --data-urlencode "db="$db --data-urlencode  "q=show measurements")
 echo $measurements
+tables=$(python - << END 
+print $measurements["results"][0]["series"][0]["values"] 
+END)
+echo $tables
+for table in $tables; do
+set -- "$table" 
+IFS="'"; declare -a Array=($*)
+db="${Array[1]}"
+echo table: $table
+#get data newer of the timestamp
+#sudo curl -o newerdata_migration.json -G 'http://'$oldfloatingip':8086/query' --data-urlencode "db=" --data-urlencode "q=SELECT * FROM  WHERE time>"$timestamp
+done
+
 #  query1="q=CREATE DATABASE "$database
 #  address2="http://$1:8086/write?db="$database
 #  $curl $args1 $address1 $options1 "$query1"
