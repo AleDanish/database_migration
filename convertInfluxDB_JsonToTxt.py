@@ -42,7 +42,6 @@ def getJsonData(file_name):
     return tables_name, data, columns
 
 def timedateToTimestamp(date_time):
-    print repr(date_time)
     dt=date_time.split('T')
     date=dt[0].split('-')
     year=int(date[0])
@@ -64,31 +63,29 @@ def writeFile(file_name, tables_name, data, columns, datetime_start):
     f = open(file_name_output, 'w+')
     for table_name, values, columns_record in zip(tables_name, data, columns):
         for record in values:
-            #f.write(table_name)
+            _to_write = '' 
             time=''
             for field, column in zip(record, columns_record):
                 if column != "time":
                     conj = ',' if column != "value" else ' '
-                    #f.write(conj + str(column) + "=" + str(field))
+                    _to_write += conj + str(column) + "=" + str(field)
                 else:
                     time, date_time=timedateToTimestamp(field)
-            if date_time > datetime_start:
-                f.write(table_name)
-                f.write(conj + str(column) + "=" + str(field))
-                f.write(' ' + time + '\n')
+                    _to_write_time = ' ' + time + '\n'
+            if int(time) > int(datetime_start.ljust(len(time),'0')):
+                f.write(table_name + _to_write + _to_write_time)
     f.close
 
 if len(sys.argv) <= 1 or sys.argv[1].endswith('.json') != True:
     print "Specify a file json to parse"
     sys.exit(1)
 if len(sys.argv) > 2:
-    datetime_start = datetime.datetime.fromtimestamp(int(sys.argv[2]))
+    timestamp = sys.argv[2]
 else:
-    datetime_start = 0
-file_name_input = sys.argv[1]
+    timestamp = 0
+file_name_input=sys.argv[1]
 table_names, data, columns=getJsonData(file_name_input)
 file_name_output = file_name_input.split(".")[0]+".txt"
-writeFile(file_name_output, table_names, data, columns, datetime_start)
-
+writeFile(file_name_output, table_names, data, columns, timestamp)
 print "File input: %s"%file_name_input
 print "File output: %s"%file_name_output
