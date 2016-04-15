@@ -114,7 +114,7 @@ Tend=$(date +%s%6N)
 Tmove=$(((Tmove_end-Tmove_start)/1000))
 Textract=$(((Textract_end-Textract_start)/1000))
 Trestart=$(((Trestart_end-Trestart_start)/1000))
-T_delete=$(((Trestart_end-Trestart_start)/1000))
+Tdelete=$(((Tdelete_end-Tdelete_start)/1000))
 Ttotal=$(((Tend-Tstart)/1000))
 
 sudo rm /home/ubuntu/times_influxdb
