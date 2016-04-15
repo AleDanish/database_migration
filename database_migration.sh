@@ -41,8 +41,8 @@ fi
 done
 Tdelete_end=$(date +%s%6N)
 
-echo "sleeping..."
-sleep 30
+#TODO: to remove, only for test purpose!
+$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=mydb" --data-binary "table2,host=server02,region=us-est value=10.01 1334055562000000000"
 
 #remove data folders
 echo "cancello i dati"
@@ -62,8 +62,6 @@ Trestart_end=$(date +%s%6N)
 
 Tdbunaval_start=$(date +%s%6N)
 for database in  ${dbs[@]}; do
-echo db: $database
-
 while true; do
 sudo rm error.txt
 $curl -G "http://localhost:8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements" 2>>error.txt
@@ -121,10 +119,10 @@ Tmove=$(((Tmove_end-Tmove_start)/1000))
 Textract=$(((Textract_end-Textract_start)/1000))
 Trestart=$(((Trestart_end-Trestart_start)/1000))
 Tdelete=$(((Tdelete_end-Tdelete_start)/1000))
-Tdbunval=$(((Tdbunaval_end-Tdbunaval_start)/1000))
+Tdbunaval=$(((Tdbunaval_end-Tdbunaval_start)/1000))
 Tmeasurements=$(((Tmeasurements_end-Tmeasurements_start)/1000))
 Tselectnewdata=$(((Tselectnewdata_end-Tselectnewdata_start)/1000))
-Tinsertnewdata=$(((Tinsertnewdata_end-Tinsertnewdata__start)/1000))
+Tinsertnewdata=$(((Tinsertnewdata_end-Tinsertnewdata_start)/1000))
 Ttotal=$(((Tend-Tstart)/1000))
 
 sudo rm /home/ubuntu/times_influxdb
