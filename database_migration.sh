@@ -64,20 +64,21 @@ while true; do
 sudo rm error.txt
 #measurements=$(curl -G "http://"$oldfloatingip":8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements")>> error.txt
 #var=$( { $curl -G "http://"$oldfloatingip":8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements"; } 2>&1 )
-measurements=$($curl -G "http://"$oldfloatingip":8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements" 2>>error.txt)
+$curl -G "http://localhost:8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements" 2>>error.txt
 error=$(<error.txt)
 echo "measurements: " $measurements
 echo "error: " $error
-if [[ "$measurements" == "" ]] && [[ $error == *"curl: (7) Failed to connect to"* ]]; then
+if [[ $error == *"curl: (7) Failed to connect to"* ]]; then
 echo "Database not available"
 sleep 5
 else
 echo "Database ready"
-sudo rm error.txt
 break
 fi
 done
 
+sudo rm error.txt
+measurements=$($curl -G "http://"$oldfloatingip":8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements")
 tables=$(python - << END 
 try:
     print $measurements["results"][0]["series"][0]["values"]
@@ -104,7 +105,7 @@ python convertInfluxDB_JsonToTxt.py $file_name_json
 
 #$curl -i -XPOST 'http://'$oldfloatingip':8086/write?db='$database --data-binary '@'$file_name_txt
 $curl -i -XPOST 'http://localhost:8086/write?db='$database --data-binary '@'$file_name_txt
-sudo rm $file_name_json $file_name_txt
+#sudo rm $file_name_json $file_name_txt
 fi
 done
 fi
