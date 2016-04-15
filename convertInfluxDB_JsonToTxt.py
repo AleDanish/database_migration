@@ -3,8 +3,8 @@
 
 import json
 import sys
-from time import mktime
 import datetime
+import calendar
 
 def getFileData(file_name):
     try:
@@ -42,7 +42,6 @@ def getJsonData(file_name):
     return tables_name, data, columns
 
 def timedateToTimestamp(date_time):
-    print repr(date_time)
     dt=date_time.split('T')
     date=dt[0].split('-')
     year=int(date[0])
@@ -53,7 +52,7 @@ def timedateToTimestamp(date_time):
     minutes=int(time[1])
     sec=time[2].split('.')
     seconds=int(sec[0])
-    timestamp=str(int(mktime(datetime.datetime(year, month, day, hours, minutes, seconds).timetuple())))
+    timestamp2=str(int(calendar.timegm(datetime.datetime(year, month, day, hours, minutes, seconds).timetuple())))
     if len(sec) > 1:
         ms=sec[1]
     else:

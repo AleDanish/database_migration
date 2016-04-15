@@ -18,6 +18,29 @@ Tmove_start=$(date +%s%6N)
 #ssh -oStrictHostKeyChecking=no -i /home/ubuntu/key/mcn-key.pem ubuntu@$oldfloatingip 'cd /var/lib/influxdb; sudo tar zcf - data hh wal meta' > /home/ubuntu/influxdb.backup.tar.gz
 Tmove_end=$(date +%s%6N)
 
+#get databases
+databases_json=$(curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "q=show databases")
+databases=$(python - << END 
+print $databases_json["results"][0]["series"][0]["values"] 
+END)
+
+curl='/usr/bin/curl'
+dbs=()
+#delete and recreate all databases
+for database_row in $databases; do
+set -- "$database_row" 
+IFS="'"; declare -a Array=($*)
+database="${Array[1]}"
+if [[ "$database" != "_internal" ]]; then
+echo "cancello database: "$database
+dbs=(${dbs[@]} $database)
+query="q=drop database "$database
+$curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "$query"
+query="q=create database "$database
+$curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "$query"
+fi
+done
+
 #remove data folders
 echo "cancello i dati"
 #sudo rm -rf /var/lib/influxdb/*
@@ -34,36 +57,28 @@ echo "database restart"
 #sudo service influxdb restart
 Trestart_end=$(date +%s%6N)
 
-#get databases
-databases_json=$(curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "q=show databases")
-echo $databases_json
-databases=$(python - << END 
-print $databases_json["results"][0]["series"][0]["values"] 
-END)
+sleep 30
+#dbs=('mydb')
+for database in  ${dbs[@]}; do
+echo db: $database
 
-curl='/usr/bin/curl'
-dbs=()
-#delete and recreate all databases
-for database_row in $databases; do
-set -- "$database_row" 
-IFS="'"; declare -a Array=($*) 
-database="${Array[1]}"
-if [[ "$database" != "_internal" ]]; then
-echo "cancello database: "$database
-dbs=(${dbs[@]} $database)
-query="q=drop database "$database
-$curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "$query"
-query="q=create database "$database
-$curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "$query"
+while true; do
+sudo rm error.txt
+#measurements=$(curl -G "http://"$oldfloatingip":8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements")>> error.txt
+#var=$( { $curl -G "http://"$oldfloatingip":8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements"; } 2>&1 )
+measurements=$($curl -G "http://"$oldfloatingip":8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements" 2>>error.txt)
+error=$(<error.txt)
+echo "measurements: " $measurements
+echo "error: " $error
+if [[ "$measurements" == "" ]] && [[ $error == *"curl: (7) Failed to connect to"* ]]; then
+echo "Database not available"
+sleep 5
+else
+echo "Database ready"
+break
 fi
 done
 
-sleep 30
-
-for database in  ${dbs[@]}; do
-echo db: $database
-measurements=$(curl -G "http://"$oldfloatingip":8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements")
-echo $measurements
 tables=$(python - << END 
 try:
     print $measurements["results"][0]["series"][0]["values"]
