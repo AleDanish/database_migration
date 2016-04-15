@@ -40,7 +40,8 @@ $curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "$query"
 
 Ttest_start=$(date +%s%6N)
 #TODO: to remove, only for test purpose!
-$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=mydb" --data-binary "table2,host=server02,region=us-est value=10.01 1334055562000000000"
+$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=mydb" --data-binary "table2,host=server02,region=us-est value=10.01 1334055561000000000"
+$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=mydb2" --data-binary "table2,host=server02,region=us-est value=10.02 1334055562000000000"
 Ttest_end=$(date +%s%6N)
 
 fi
