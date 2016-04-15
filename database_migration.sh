@@ -41,6 +41,9 @@ fi
 done
 Tdelete_end=$(date +%s%6N)
 
+echo "sleeping..."
+sleep 30
+
 #remove data folders
 echo "cancello i dati"
 sudo rm -rf /var/lib/influxdb/*
@@ -57,7 +60,7 @@ echo "database restart"
 sudo service influxdb restart
 Trestart_end=$(date +%s%6N)
 
-Tdbunval_start=$(date +%s%6N)
+Tdbunaval_start=$(date +%s%6N)
 for database in  ${dbs[@]}; do
 echo db: $database
 
@@ -73,7 +76,7 @@ echo "Database ready"
 break
 fi
 done
-Tdbunval_end=$(date +%s%6N)
+Tdbunaval_end=$(date +%s%6N)
 
 Tmeasurements_start=$(date +%s%6N)
 sudo rm error.txt
@@ -86,7 +89,6 @@ except KeyError:
 END)
 Tmeasurements_end=$(date +%s%6N)
 
-Tselectnewdata_start=$(date +%s%6N)
 if [[ "$tables" == "" ]]; then
     echo "No new data found for database "$database
 else
@@ -99,9 +101,10 @@ if [[ "$table" != *"["* ]] && [[ "$table" != *"]"* ]]; then
 file_name="newerdata_"$database"_"$table
 file_name_json=$file_name".json"
 file_name_txt=$file_name".txt"
+
+Tselectnewdata_start=$(date +%s%6N)
 $curl -o $file_name_json -G 'http://'$oldfloatingip':8086/query' --data-urlencode "db="$database --data-urlencode "q=SELECT * FROM $table"
 python convertInfluxDB_JsonToTxt.py $file_name_json
-
 Tselectnewdata_end=$(date +%s%6N)
 
 Tinsertnewdata_start=$(date +%s%6N)
@@ -118,7 +121,7 @@ Tmove=$(((Tmove_end-Tmove_start)/1000))
 Textract=$(((Textract_end-Textract_start)/1000))
 Trestart=$(((Trestart_end-Trestart_start)/1000))
 Tdelete=$(((Tdelete_end-Tdelete_start)/1000))
-Tdbunaval=$(((Tdbunval_end-Tdbunval_start)/1000))
+Tdbunval=$(((Tdbunaval_end-Tdbunaval_start)/1000))
 Tmeasurements=$(((Tmeasurements_end-Tmeasurements_start)/1000))
 Tselectnewdata=$(((Tselectnewdata_end-Tselectnewdata_start)/1000))
 Tinsertnewdata=$(((Tinsertnewdata_end-Tinsertnewdata__start)/1000))
