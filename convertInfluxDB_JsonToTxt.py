@@ -52,7 +52,7 @@ def timedateToTimestamp(date_time):
     minutes=int(time[1])
     sec=time[2].split('.')
     seconds=int(sec[0])
-    timestamp2=str(int(calendar.timegm(datetime.datetime(year, month, day, hours, minutes, seconds).timetuple())))
+    timestamp=str(int(calendar.timegm(datetime.datetime(year, month, day, hours, minutes, seconds).timetuple())))
     if len(sec) > 1:
         ms=sec[1]
     else:

@@ -8,17 +8,16 @@ fi
 echo $oldfloatingip
 
 #remove old archive if present
-#sudo rm /home/ubuntu/influxdb.backup.tar.gz
-
-timestamp=$(date +%s)
-timestamp='1132005588999700000'
+sudo rm /home/ubuntu/influxdb.backup.tar.gz
 
 #send data
 Tmove_start=$(date +%s%6N)
-#ssh -oStrictHostKeyChecking=no -i /home/ubuntu/key/mcn-key.pem ubuntu@$oldfloatingip 'cd /var/lib/influxdb; sudo tar zcf - data hh wal meta' > /home/ubuntu/influxdb.backup.tar.gz
+ssh -oStrictHostKeyChecking=no -i /home/ubuntu/key/mcn-key.pem ubuntu@$oldfloatingip 'cd /var/lib/influxdb; sudo tar zcf - data hh wal meta' > /home/ubuntu/influxdb.backup.tar.gz
 Tmove_end=$(date +%s%6N)
 
 #get databases
+Tdelete_start=$(date +%s%6N)
+
 databases_json=$(curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "q=show databases")
 databases=$(python - << END 
 print $databases_json["results"][0]["series"][0]["values"] 
@@ -40,25 +39,24 @@ query="q=create database "$database
 $curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "$query"
 fi
 done
+Tdelete_end=$(date +%s%6N)
 
 #remove data folders
 echo "cancello i dati"
-#sudo rm -rf /var/lib/influxdb/*
+sudo rm -rf /var/lib/influxdb/*
 
 #extract data
 Textract_start=$(date +%s%6N)
 echo "estraggo i dati"
-#sudo tar -zxf /home/ubuntu/influxdb.backup.tar.gz -C /var/lib/influxdb
+sudo tar -zxf /home/ubuntu/influxdb.backup.tar.gz -C /var/lib/influxdb
 Textract_end=$(date +%s%6N)
 
 #restart database
 Trestart_start=$(date +%s%6N)
 echo "database restart"
-#sudo service influxdb restart
+sudo service influxdb restart
 Trestart_end=$(date +%s%6N)
 
-sleep 30
-#dbs=('mydb')
 for database in  ${dbs[@]}; do
 echo db: $database
 
@@ -75,6 +73,7 @@ echo "Database not available"
 sleep 5
 else
 echo "Database ready"
+sudo rm error.txt
 break
 fi
 done
@@ -103,9 +102,9 @@ file_name_txt=$file_name".txt"
 $curl -o $file_name_json -G 'http://'$oldfloatingip':8086/query' --data-urlencode "db="$database --data-urlencode "q=SELECT * FROM $table"
 python convertInfluxDB_JsonToTxt.py $file_name_json
 
-$curl -i -XPOST 'http://'$oldfloatingip':8086/write?db='$database --data-binary '@'$file_name_txt
-#$curl -i -XPOST 'http://localhost:8086/write?db='$database --data-binary '@'$file_name_txt
-#sudo rm $file_name_json $file_name_txt
+#$curl -i -XPOST 'http://'$oldfloatingip':8086/write?db='$database --data-binary '@'$file_name_txt
+$curl -i -XPOST 'http://localhost:8086/write?db='$database --data-binary '@'$file_name_txt
+sudo rm $file_name_json $file_name_txt
 fi
 done
 fi
@@ -115,10 +114,12 @@ Tend=$(date +%s%6N)
 Tmove=$(((Tmove_end-Tmove_start)/1000))
 Textract=$(((Textract_end-Textract_start)/1000))
 Trestart=$(((Trestart_end-Trestart_start)/1000))
+T_delete=$(((Trestart_end-Trestart_start)/1000))
 Ttotal=$(((Tend-Tstart)/1000))
 
-#sudo rm /home/ubuntu/times_influxdb
-#sudo echo "Time to move data: " $Tmove >> /home/ubuntu/times_influxdb
-#sudo echo "Time to extract data: " $Textract >> /home/ubuntu/times_influxdb
-#sudo echo "Time to restart data: " $Trestart >> /home/ubuntu/times_influxdb
-#sudo echo "Time total: " $Ttotal >> /home/ubuntu/times_influxdb
+sudo rm /home/ubuntu/times_influxdb
+sudo echo "Time to move data: " $Tmove >> /home/ubuntu/times_influxdb
+sudo echo "Time to extract data: " $Textract >> /home/ubuntu/times_influxdb
+sudo echo "Time to restart data: " $Trestart >> /home/ubuntu/times_influxdb
+sudo echo "Time to delete data: " $Tdelete >> /home/ubuntu/times_influxdb
+sudo echo "Time total: " $Ttotal >> /home/ubuntu/times_influxdb
