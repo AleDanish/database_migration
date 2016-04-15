@@ -37,12 +37,15 @@ query="q=drop database "$database
 $curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "$query"
 query="q=create database "$database
 $curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "$query"
+
+Ttest_start=$(date +%s%6N)
+#TODO: to remove, only for test purpose!
+$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=mydb" --data-binary "table2,host=server02,region=us-est value=10.01 1334055562000000000"
+Ttest_end=$(date +%s%6N)
+
 fi
 done
 Tdelete_end=$(date +%s%6N)
-
-#TODO: to remove, only for test purpose!
-$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=mydb" --data-binary "table2,host=server02,region=us-est value=10.01 1334055562000000000"
 
 #remove data folders
 echo "cancello i dati"
@@ -125,6 +128,8 @@ Tselectnewdata=$(((Tselectnewdata_end-Tselectnewdata_start)/1000))
 Tinsertnewdata=$(((Tinsertnewdata_end-Tinsertnewdata_start)/1000))
 Ttotal=$(((Tend-Tstart)/1000))
 
+Ttest=$(((Ttest_end-Ttest_start)/1000))
+
 sudo rm /home/ubuntu/times_influxdb
 sudo echo "Time to move data: " $Tmove >> /home/ubuntu/times_influxdb
 sudo echo "Time to extract data: " $Textract >> /home/ubuntu/times_influxdb
@@ -135,3 +140,4 @@ sudo echo "Time to get measurements data: " $Tmeasurements >> /home/ubuntu/times
 sudo echo "Time to select the new records: " $Tselectnewdata >> /home/ubuntu/times_influxdb
 sudo echo "Time to insert the new records: " $Tinsertnewdata >> /home/ubuntu/times_influxdb
 sudo echo "Time total: " $Ttotal >> /home/ubuntu/times_influxdb
+sudo echo "Time to insert the test record: " $Ttest >> /home/ubuntu/times_influxdb
