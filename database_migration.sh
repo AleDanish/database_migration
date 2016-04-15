@@ -42,7 +42,7 @@ print $databases_json["results"][0]["series"][0]["values"]
 END)
 
 curl='/usr/bin/curl'
-
+dbs=()
 #delete and recreate all databases
 for database_row in $databases; do
 set -- "$database_row" 
@@ -50,6 +50,7 @@ IFS="'"; declare -a Array=($*)
 database="${Array[1]}"
 if [[ "$database" != "_internal" ]]; then
 echo "cancello database: "$database
+dbs=(${dbs[@]} $database)
 query="q=drop database "$database
 $curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "$query"
 query="q=create database "$database
@@ -59,18 +60,20 @@ done
 
 sleep 30
 
-#for database_row in $databases; do
-set -- "$database_row" 
-IFS="'"; declare -a Array=($*) 
-database="${Array[1]}"
-database="mydb"
+for database in  ${dbs[@]}; do
 echo db: $database
 measurements=$(curl -G "http://"$oldfloatingip":8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements")
 echo $measurements
 tables=$(python - << END 
-print $measurements["results"][0]["series"][0]["values"]
+try:
+    print $measurements["results"][0]["series"][0]["values"]
+except KeyError:
+    pass
 END)
-echo $tables
+echo "tables: " $tables
+if [[ "$tables" == "" ]]; then
+    echo "No new data found for database "$database
+else
 for table_raw in $tables; do
 set -- "$table_raw"
 IFS=" "; declare -a Array=($*)
@@ -84,19 +87,14 @@ file_name_json=$file_name".json"
 file_name_txt=$file_name".txt"
 $curl -o $file_name_json -G 'http://'$oldfloatingip':8086/query' --data-urlencode "db="$database --data-urlencode "q=SELECT * FROM $table"
 python convertInfluxDB_JsonToTxt.py $file_name_json
+
 $curl -i -XPOST 'http://'$oldfloatingip':8086/write?db='$database --data-binary '@'$file_name_txt
-sudo rm $file_name_json $file_name_txt
+#$curl -i -XPOST 'http://localhost:8086/write?db='$database --data-binary '@'$file_name_txt
+#sudo rm $file_name_json $file_name_txt
 fi
 done
-
-#done
-
-#importa i dati
-#$curl -i -XPOST 'http://'$oldfloatingip':8086/write?db=mydb' --data-binary @newerdata_migration.txt
-
-#restart servizio
-#sudo service influxdb restart
-
+fi
+done
 Tend=$(date +%s%6N)
 
 Tmove=$(((Tmove_end-Tmove_start)/1000))
@@ -109,4 +107,3 @@ Ttotal=$(((Tend-Tstart)/1000))
 #sudo echo "Time to extract data: " $Textract >> /home/ubuntu/times_influxdb
 #sudo echo "Time to restart data: " $Trestart >> /home/ubuntu/times_influxdb
 #sudo echo "Time total: " $Ttotal >> /home/ubuntu/times_influxdb
-
