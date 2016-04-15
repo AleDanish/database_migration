@@ -57,26 +57,25 @@ echo "database restart"
 sudo service influxdb restart
 Trestart_end=$(date +%s%6N)
 
+Tdbunval_start=$(date +%s%6N)
 for database in  ${dbs[@]}; do
 echo db: $database
 
 while true; do
 sudo rm error.txt
-#measurements=$(curl -G "http://"$oldfloatingip":8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements")>> error.txt
-#var=$( { $curl -G "http://"$oldfloatingip":8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements"; } 2>&1 )
 $curl -G "http://localhost:8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements" 2>>error.txt
 error=$(<error.txt)
-echo "measurements: " $measurements
-echo "error: " $error
 if [[ $error == *"curl: (7) Failed to connect to"* ]]; then
 echo "Database not available"
-sleep 5
+sleep 2
 else
 echo "Database ready"
 break
 fi
 done
+Tdbunval_end=$(date +%s%6N)
 
+Tmeasurements_start=$(date +%s%6N)
 sudo rm error.txt
 measurements=$($curl -G "http://"$oldfloatingip":8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements")
 tables=$(python - << END 
@@ -85,7 +84,9 @@ try:
 except KeyError:
     pass
 END)
-echo "tables: " $tables
+Tmeasurements_end=$(date +%s%6N)
+
+Tselectnewdata_start=$(date +%s%6N)
 if [[ "$tables" == "" ]]; then
     echo "No new data found for database "$database
 else
@@ -94,8 +95,6 @@ set -- "$table_raw"
 IFS=" "; declare -a Array=($*)
 table="${Array[0]}"
 if [[ "$table" != *"["* ]] && [[ "$table" != *"]"* ]]; then
-echo $table
-
 #get data newer of the timestamp
 file_name="newerdata_"$database"_"$table
 file_name_json=$file_name".json"
@@ -103,8 +102,11 @@ file_name_txt=$file_name".txt"
 $curl -o $file_name_json -G 'http://'$oldfloatingip':8086/query' --data-urlencode "db="$database --data-urlencode "q=SELECT * FROM $table"
 python convertInfluxDB_JsonToTxt.py $file_name_json
 
-#$curl -i -XPOST 'http://'$oldfloatingip':8086/write?db='$database --data-binary '@'$file_name_txt
+Tselectnewdata_end=$(date +%s%6N)
+
+Tinsertnewdata_start=$(date +%s%6N)
 $curl -i -XPOST 'http://localhost:8086/write?db='$database --data-binary '@'$file_name_txt
+Tinsertnewdata_end=$(date +%s%6N)
 #sudo rm $file_name_json $file_name_txt
 fi
 done
@@ -116,6 +118,10 @@ Tmove=$(((Tmove_end-Tmove_start)/1000))
 Textract=$(((Textract_end-Textract_start)/1000))
 Trestart=$(((Trestart_end-Trestart_start)/1000))
 Tdelete=$(((Tdelete_end-Tdelete_start)/1000))
+Tdbunaval=$(((Tdbunval_end-Tdbunval_start)/1000))
+Tmeasurements=$(((Tmeasurements_end-Tmeasurements_start)/1000))
+Tselectnewdata=$(((Tselectnewdata_end-Tselectnewdata_start)/1000))
+Tinsertnewdata=$(((Tinsertnewdata_end-Tinsertnewdata__start)/1000))
 Ttotal=$(((Tend-Tstart)/1000))
 
 sudo rm /home/ubuntu/times_influxdb
@@ -123,4 +129,8 @@ sudo echo "Time to move data: " $Tmove >> /home/ubuntu/times_influxdb
 sudo echo "Time to extract data: " $Textract >> /home/ubuntu/times_influxdb
 sudo echo "Time to restart data: " $Trestart >> /home/ubuntu/times_influxdb
 sudo echo "Time to delete data: " $Tdelete >> /home/ubuntu/times_influxdb
+sudo echo "Time db unavailability: " $Tdbunaval >> /home/ubuntu/times_influxdb
+sudo echo "Time to get measurements data: " $Tmeasurements >> /home/ubuntu/times_influxdb
+sudo echo "Time to select the new records: " $Tselectnewdata >> /home/ubuntu/times_influxdb
+sudo echo "Time to insert the new records: " $Tinsertnewdata >> /home/ubuntu/times_influxdb
 sudo echo "Time total: " $Ttotal >> /home/ubuntu/times_influxdb
