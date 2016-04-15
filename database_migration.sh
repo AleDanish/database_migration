@@ -11,6 +11,7 @@ echo $oldfloatingip
 #sudo rm /home/ubuntu/influxdb.backup.tar.gz
 
 timestamp=$(date +%s)
+timestamp='1132005588999700000'
 
 #send data
 Tmove_start=$(date +%s%6N)
@@ -34,17 +35,37 @@ echo "database restart"
 Trestart_end=$(date +%s%6N)
 
 #get databases
-databases_json=$(curl -G "http://localhost:8086/query" --data-urlencode  "q=show databases")
+databases_json=$(curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "q=show databases")
 echo $databases_json
 databases=$(python - << END 
 print $databases_json["results"][0]["series"][0]["values"] 
 END)
+
+curl='/usr/bin/curl'
+
+#delete and recreate all databases
 for database_row in $databases; do
 set -- "$database_row" 
 IFS="'"; declare -a Array=($*) 
 database="${Array[1]}"
+if [[ "$database" != "_internal" ]]; then
+echo "cancello database: "$database
+query="q=drop database "$database
+$curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "$query"
+query="q=create database "$database
+$curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "$query"
+fi
+done
+
+sleep 30
+
+#for database_row in $databases; do
+set -- "$database_row" 
+IFS="'"; declare -a Array=($*) 
+database="${Array[1]}"
+database="mydb"
 echo db: $database
-measurements=$(curl -G "http://localhost:8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements")
+measurements=$(curl -G "http://"$oldfloatingip":8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements")
 echo $measurements
 tables=$(python - << END 
 print $measurements["results"][0]["series"][0]["values"]
@@ -56,22 +77,22 @@ IFS=" "; declare -a Array=($*)
 table="${Array[0]}"
 if [[ "$table" != *"["* ]] && [[ "$table" != *"]"* ]]; then
 echo $table
+
 #get data newer of the timestamp
-file_name="newerdata_migration"$db$table".json"
-sudo curl -o $file_name -G 'http://'$oldfloatingip':8086/query' --data-urlencode "db="$database --data-urlencode "q=SELECT * FROM "$table
-
-#python convertInfluxDB_JsonToTxt.py newerdata_migration.json $timestamp
-
+file_name="newerdata_"$database"_"$table
+file_name_json=$file_name".json"
+file_name_txt=$file_name".txt"
+$curl -o $file_name_json -G 'http://'$oldfloatingip':8086/query' --data-urlencode "db="$database --data-urlencode "q=SELECT * FROM $table"
+python convertInfluxDB_JsonToTxt.py $file_name_json
+$curl -i -XPOST 'http://'$oldfloatingip':8086/write?db='$database --data-binary '@'$file_name_txt
+sudo rm $file_name_json $file_name_txt
 fi
 done
 
-#  query1="q=CREATE DATABASE "$database
-#  address2="http://$1:8086/write?db="$database
-#  $curl $args1 $address1 $options1 "$query1"
-done
+#done
 
 #importa i dati
-#curl -i -XPOST 'http://localhost:8086/write?db=mydb' --data-binary @newerdata_migration.txt
+#$curl -i -XPOST 'http://'$oldfloatingip':8086/write?db=mydb' --data-binary @newerdata_migration.txt
 
 #restart servizio
 #sudo service influxdb restart
