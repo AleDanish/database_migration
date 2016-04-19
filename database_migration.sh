@@ -38,11 +38,15 @@ $curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "$query"
 query="q=create database "$database
 $curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "$query"
 
-Ttest_start=$(date +%s%6N)
+#Ttest_start=$(date +%s%6N)
 #TODO: to remove, only for test purpose!
-$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=mydb" --data-binary "table2,host=server02,region=us-est value=10.01 1334055561000000000"
-$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=mydb2" --data-binary "table2,host=server02,region=us-est value=10.02 1334055562000000000"
-Ttest_end=$(date +%s%6N)
+#$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a3" --data-binary "table3,host=server02,region=us-est value=10.01 1334055561000000000"
+#$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a3" --data-binary "table3,host=server03,region=us-est value=10.01 1334055562000000000"
+#$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a4" --data-binary "table4,host=server02,region=us-est value=10.01 1334055561000000000"
+#$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a4" --data-binary "table3,host=server02,region=us-est value=20.02 1334055562000000000"
+#$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a5" --data-binary "table3,host=server02,region=us-est value=30.03 1334055512000000000"
+#$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a5" --data-binary "table4,host=server03,region=us-est value=30.03 1334055511000000000"
+#Ttest_end=$(date +%s%6N)
 
 fi
 done
@@ -66,39 +70,51 @@ Trestart_end=$(date +%s%6N)
 
 Tdbunaval_start=$(date +%s%6N)
 for database in  ${dbs[@]}; do
+echo "database1: "$database
 while true; do
 sudo rm error.txt
 $curl -G "http://localhost:8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements" 2>>error.txt
 error=$(<error.txt)
 if [[ $error == *"curl: (7) Failed to connect to"* ]]; then
 echo "Database not available"
+sudo rm error.txt
 sleep 2
 else
 echo "Database ready"
+sudo rm error.txt
 break
 fi
 done
 Tdbunaval_end=$(date +%s%6N)
 
 Tmeasurements_start=$(date +%s%6N)
-sudo rm error.txt
 measurements=$($curl -G "http://"$oldfloatingip":8086/query" --data-urlencode "db="$database --data-urlencode  "q=show measurements")
-tables=$(python - << END 
+tables=$(python - << END
 try:
-    print $measurements["results"][0]["series"][0]["values"]
+    measures = $measurements["results"][0]["series"][0]["values"]
+    str = ""
+    for i in measures:
+        str += i[0] + ","
+    print str
 except KeyError:
     pass
 END)
+echo "measurements prova: " $measurements
+echo "tables prova: "$tables
 Tmeasurements_end=$(date +%s%6N)
 
 if [[ "$tables" == "" ]]; then
-    echo "No new data found for database "$database
+echo "No new data found for database "$database
 else
 for table_raw in $tables; do
 set -- "$table_raw"
-IFS=" "; declare -a Array=($*)
+IFS=","; declare -a Array=($*)
 table="${Array[0]}"
+echo "table parse: " $table
 if [[ "$table" != *"["* ]] && [[ "$table" != *"]"* ]]; then
+echo "database2: "$database
+echo "table2: " $table
+
 #get data newer of the timestamp
 file_name="newerdata_"$database"_"$table
 file_name_json=$file_name".json"
