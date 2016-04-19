@@ -38,15 +38,15 @@ $curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "$query"
 query="q=create database "$database
 $curl -G "http://"$oldfloatingip":8086/query" --data-urlencode  "$query"
 
-#Ttest_start=$(date +%s%6N)
+Ttest_start=$(date +%s%6N)
 #TODO: to remove, only for test purpose!
-#$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a3" --data-binary "table3,host=server02,region=us-est value=10.01 1334055561000000000"
-#$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a3" --data-binary "table3,host=server03,region=us-est value=10.01 1334055562000000000"
-#$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a4" --data-binary "table4,host=server02,region=us-est value=10.01 1334055561000000000"
-#$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a4" --data-binary "table3,host=server02,region=us-est value=20.02 1334055562000000000"
-#$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a5" --data-binary "table3,host=server02,region=us-est value=30.03 1334055512000000000"
-#$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a5" --data-binary "table4,host=server03,region=us-est value=30.03 1334055511000000000"
-#Ttest_end=$(date +%s%6N)
+$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a3" --data-binary "table3,host=server02,region=us-est value=10.01 1334055561000000000"
+$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a3" --data-binary "table3,host=server03,region=us-est value=10.01 1334055562000000000"
+$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a4" --data-binary "table4,host=server02,region=us-est value=10.01 1334055561000000000"
+$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a4" --data-binary "table3,host=server02,region=us-est value=20.02 1334055562000000000"
+$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a5" --data-binary "table3,host=server02,region=us-est value=30.03 1334055512000000000"
+$curl -i -XPOST "http://"$oldfloatingip":8086/write?db=a5" --data-binary "table4,host=server03,region=us-est value=30.03 1334055511000000000"
+Ttest_end=$(date +%s%6N)
 
 fi
 done
@@ -128,7 +128,7 @@ Tselectnewdata_end=$(date +%s%6N)
 Tinsertnewdata_start=$(date +%s%6N)
 $curl -i -XPOST 'http://localhost:8086/write?db='$database --data-binary '@'$file_name_txt
 Tinsertnewdata_end=$(date +%s%6N)
-#sudo rm $file_name_json $file_name_txt
+sudo rm $file_name_json $file_name_txt
 fi
 done
 fi
